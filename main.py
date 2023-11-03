@@ -8,6 +8,8 @@ import threading
 from CTkMessagebox import CTkMessagebox
 from serial import *
 import serial
+from apscheduler.schedulers.background import BlockingScheduler
+
 
 class Main(customtkinter.CTk):
     stateScan = "disabled"
@@ -19,7 +21,7 @@ class Main(customtkinter.CTk):
     pos = ""
     no_reader = 'FF'
     uid_str = None
-    start = True
+    start = False
     thread = None
     test_serial = None
     console = None
@@ -145,12 +147,16 @@ class Main(customtkinter.CTk):
         self.inputPosVar.trace("w", self.on_pos_entry_change)
 
     def on_pos_entry_change(self, *args):
+        global test_serial, pos
         pos = self.inputPosVar.get()
+        test_serial = Serial().close()
+
         if pos:
             self.stateSet = "active"
+            self.sidebar_button_1.configure(state=self.stateSet)
         else:
             self.stateSet = "disabled"
-        self.sidebar_button_1.configure(state=self.stateSet)
+            self.sidebar_button_1.configure(state=self.stateSet)
 
     def create_sidebar_button(self):
         self.sidebar_button_1 = customtkinter.CTkButton(self.sidebar_frame, state=self.stateSet, text="SET READER", width=100, height=50, font=customtkinter.CTkFont(weight="bold"), command=self.setReader, hover_color="blue")
@@ -180,6 +186,9 @@ class Main(customtkinter.CTk):
 
     def setReader(self):
         global test_serial, pos
+        self.stateSet = "disabled"
+        self.sidebar_button_1.configure(state=self.stateSet)
+
         try:
             port = self.listPort.get()
             pos = self.inputPos.get()
@@ -202,19 +211,18 @@ class Main(customtkinter.CTk):
             self.scanBtn.configure(state="disabled")
 
     def triggerScan(self):
-        global start, btnSet, btnScan, dataVariable, thread
         if self.start:
-            self.sidebar_button_1["state"] = 'disabled'
+            self.start = False
+            self.inputPos.configure(state="normal")
+            self.scanBtn.configure(text="START SCAN")
+
+        else:
+            self.start = True
             self.scanBtn.configure(text="STOP SCAN")
+            self.inputPos.configure(state="disabled")
             self.dataVariable.set("")
             self.sendData()
-            self.start = False
-        else:
-            self.sidebar_button_1["state"] = 'normal'
-            self.scanBtn.configure(text="START SCAN")
-            self.dataVariable.set("")
-            self.thread.cancel() # Check if self.thread exists before canceling it
-            self.start = True
+
 
     def send_cmd(self, cmd):
         global test_serial, dataVariable, uidLatest, pos, url, dataUid
@@ -239,15 +247,14 @@ class Main(customtkinter.CTk):
             self.dataVariable.set("")
             self.dataVariable.set("Kartu Tidak Terdeteksi \n")
         elif hex_space == "":
-            self.sidebar_button_1["state"] = 'normal'
+            self.thread.cancel()  # Check if self.thread exists before canceling it
+            self.start = False
+            self.sidebar_button_1.configure(state="actived")
             self.dataVariable.set("")
             self.dataVariable.set("PORT TIDAK TERDETEKSI \n")
             self.inputPos.delete(3, "end")
             self.inputPos.focus()
             self.scanBtn.configure(text="START SCAN")
-
-            self.thread.cancel()  # Check if self.thread exists before canceling it
-            self.start = True
         else:
             if uid_str == self.uidLatest:
                 self.dataVariable.set("")
@@ -260,9 +267,14 @@ class Main(customtkinter.CTk):
                 self.dataVariable.set(f"UID : {uid_str} \n Status : {sendApi} \n")
 
     def sendData(self):
-        self.send_cmd(self.INVENTORY1)
-        self.thread = threading.Timer(0, self.sendData)
-        self.thread.start()
+        if self.start:
+            self.send_cmd(self.INVENTORY1)
+            self.thread = threading.Timer(0, self.sendData)
+            self.thread.start()
+        elif self.thread is not None and isinstance(self.thread, threading.Timer):
+            self.thread.cancel()
+            self.thread = None
+            self.dataVariable.set("SCANNER STOPPED")
 
 if __name__ == "__main__":
     app = Main()
