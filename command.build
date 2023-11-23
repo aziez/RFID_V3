@@ -1,0 +1,2 @@
+pyinstaller -F main.py --windowed --noconfirm --hidden-import=windows_curses --hidden-import=pkg_resources --name="RFID_V3_build_1.0.3_NO_SEND_DATA"
+    plugins     file        mode        info        hiden info                          pkg library             file name                                   
