@@ -2,13 +2,17 @@
 
 import re
 import customtkinter
+from requests import *
 import requests
+
 import serial.tools.list_ports
 import threading
 from CTkMessagebox import CTkMessagebox
 from serial import *
 import serial
-from apscheduler.schedulers.background import BlockingScheduler
+import  urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class Main(customtkinter.CTk):
@@ -23,7 +27,6 @@ class Main(customtkinter.CTk):
     uid_str = None
     start = False
     thread = None
-    test_serial = None
     console = None
     epcValue = None
     uidLatest = "00000000"
@@ -84,7 +87,15 @@ class Main(customtkinter.CTk):
         self.create_main_content()
 
     def set_color_theme(self):
-        customtkinter.set_appearance_mode("Light")
+
+        def setMode( value: str):
+            customtkinter.set_appearance_mode(value)
+
+        self.mode = customtkinter.CTkSegmentedButton(self, values=["Dark", "Light"], command=setMode)
+        self.mode.set("Light")
+        self.mode.grid(row=4, column=2,)
+
+        customtkinter.set_appearance_mode(self.mode.get())
         customtkinter.set_default_color_theme("blue")
         self.configure()
 
@@ -174,7 +185,7 @@ class Main(customtkinter.CTk):
         self.dataVariable = customtkinter.StringVar()
         self.dataVariable.set("0000000")
 
-        self.dataUid = customtkinter.CTkButton(self, width=500, height=20, state="disabled", corner_radius=0, text_color_disabled="#0dc900", text=self.uidLatest, font=customtkinter.CTkFont(weight="bold", size=36))
+        self.dataUid = customtkinter.CTkButton(self, width=500, height=20, state="disabled", corner_radius=0, text_color_disabled="#FFFFFF", text=self.uidLatest, font=customtkinter.CTkFont(weight="bold", size=50))
         self.dataUid.grid(row=0, column=1, columnspan=2, pady=(5, 20), sticky="nsew")
         self.labelLatest = customtkinter.CTkLabel(self, text="USER ID DATA", font=customtkinter.CTkFont(size=18, weight="bold"))
         self.labelLatest.grid(row=1, column=1, pady=(0, 10))
@@ -184,6 +195,8 @@ class Main(customtkinter.CTk):
         self.scanBtn = customtkinter.CTkButton(self, state=self.stateScan, text="SCAN DATA", width=200, height=50, font=customtkinter.CTkFont(weight="bold"), hover_color="darkgreen", command=self.triggerScan)
         self.scanBtn.grid(row=3, column=1, padx=20, pady=0)
 
+
+
     def setReader(self):
         global test_serial, pos
         self.stateSet = "disabled"
@@ -191,7 +204,7 @@ class Main(customtkinter.CTk):
 
         try:
             port = self.listPort.get()
-            pos = self.inputPos.get()
+            pos = self.inputPosVar.get()
             test_serial = Serial(port, 57600, timeout=0.1)
             self.portLabel = customtkinter.CTkLabel(self.tabView.tab("PORT"), text=port,
                                                     font=customtkinter.CTkFont(size=28, weight="bold"))
@@ -225,7 +238,9 @@ class Main(customtkinter.CTk):
 
 
     def send_cmd(self, cmd):
-        global test_serial, dataVariable, uidLatest, pos, url, dataUid
+        global test_serial
+        self.pos = self.inputPosVar.get()
+
 
         data_scan = self.crc(cmd)
         test_serial.write(data_scan)
@@ -247,7 +262,6 @@ class Main(customtkinter.CTk):
             self.dataVariable.set("")
             self.dataVariable.set("Kartu Tidak Terdeteksi \n")
         elif hex_space == "":
-            self.thread.cancel()  # Check if self.thread exists before canceling it
             self.start = False
             self.sidebar_button_1.configure(state="actived")
             self.dataVariable.set("")
@@ -261,10 +275,13 @@ class Main(customtkinter.CTk):
                 self.dataVariable.set("PASS DOUBLE DATA \n")
             else:
                 self.uidLatest = uid_str
-                sendApi = requests.get(self.url, params={'pos': self.pos, 'kode': self.uid_str})
+                # self.sendApi = requests.get(self.url, params={'pos': self.pos, 'kode': self.uidLatest}, verify=False)
+                self.sendApi = "Success"
+                print("PSISIS = "+self.pos)
+                print("\nKODE = "+self.uidLatest)
                 self.dataUid.configure(text=f"{self.uidLatest}")
                 self.dataVariable.set("")
-                self.dataVariable.set(f"UID : {uid_str} \n Status : {sendApi} \n")
+                self.dataVariable.set(f"UID : {uid_str} \n Status : {self.sendApi} \n")
 
     def sendData(self):
         if self.start:
