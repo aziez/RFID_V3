@@ -11,5 +11,6 @@ A few additional tips:
 - Always activate your virtual environment before working on the project
 - Use `pip freeze > requirements.txt` to generate a requirements file
 - Consider using a `.gitignore` file to exclude virtual environment and build files
+- Installing driver from this URL https://www.wch.cn/downloads/file/65.html
 
 Would you like me to help you initialize the Git repository for this project?
