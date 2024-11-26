@@ -1,0 +1,15 @@
+customtkinter
+pyserial
+CTkMessagebox
+requests
+pyinstaller
+```
+
+Would you like me to help you set up the project repository or explain any part of the Git workflow?
+
+A few additional tips:
+- Always activate your virtual environment before working on the project
+- Use `pip freeze > requirements.txt` to generate a requirements file
+- Consider using a `.gitignore` file to exclude virtual environment and build files
+
+Would you like me to help you initialize the Git repository for this project?
