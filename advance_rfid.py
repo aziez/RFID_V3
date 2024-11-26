@@ -55,11 +55,12 @@ class RFIDReaderApp(ctk.CTk):
 
     def _setup_window(self):
         """Configure main window settings."""
-        self.geometry("800x400")
-        self.title("Power RFID V.3 By: Aziz")
-        ctk.set_appearance_mode("Light")
-        ctk.set_default_color_theme("green")
-        self.grid_columnconfigure(1, weight=1)
+        self.geometry("1000x600")
+        self.title("Advanced RFID Reader")
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
+        self.grid_columnconfigure((1, 2), weight=1)
+        self.grid_rowconfigure(2, weight=1)
 
     def _initialize_variables(self):
         """Initialize application state variables."""
@@ -76,62 +77,69 @@ class RFIDReaderApp(ctk.CTk):
 
         self.rfid_config = RFIDReaderConfig()
         self.rfid_commands = RFIDCommands(RFIDReaderConfig.NO_READER)
-        self.api_url = 'https://registrasi.ptbi.co.id/web/rfid'
+
+        # API Configuration
+        self.api_enabled = ctk.BooleanVar(value=False)
+        self.api_url = ctk.StringVar(value='https://registrasi.ptbi.co.id/web/rfid')
 
     def _setup_ui(self):
         """Set up the entire user interface."""
         self._create_sidebar()
         self._create_main_content()
+        self._create_api_config_frame()
         self._refresh_available_ports()
 
     def _create_sidebar(self):
         """Create the sidebar frame and its components."""
-        self.sidebar_frame = ctk.CTkFrame(self, width=200, corner_radius=0)
-        self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(5, weight=1)
+        self.sidebar_frame = ctk.CTkFrame(self, width=250, corner_radius=10)
+        self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsew", padx=10, pady=10)
+        self.sidebar_frame.grid_rowconfigure(6, weight=1)
 
         self._create_sidebar_components()
 
     def _create_sidebar_components(self):
         """Create individual sidebar components."""
-        self._create_logo_label()
-        self._create_port_section()
-        self._create_position_section()
-        self._create_set_reader_button()
-        self._create_tab_view()
-
-    def _create_logo_label(self):
+        # Logo and Title
         ctk.CTkLabel(
             self.sidebar_frame,
-            text="KONFIGURASI RFID",
-            font=ctk.CTkFont(size=15, weight="bold")
-        ).grid(row=0, column=0, padx=20, pady=(20, 10))
+            text="RFID READER CONFIG",
+            font=ctk.CTkFont(size=20, weight="bold")
+        ).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
 
-    def _create_port_section(self):
-        """Create port selection components."""
+        # Port Selection
         ctk.CTkLabel(
             self.sidebar_frame,
-            text="PORT",
-            font=ctk.CTkFont(size=10, weight="bold")
-        ).grid(row=1, column=0)
+            text="Serial Port",
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).grid(row=1, column=0, padx=20, pady=(10, 5), sticky="w")
 
         self.port_menu = ctk.CTkOptionMenu(
             self.sidebar_frame,
             state=self.port_state,
-            values=["Select Port"]
+            values=["Select Port"],
+            width=200
         )
         self.port_menu.grid(row=2, column=0, padx=20, pady=(0, 10))
 
-    def _create_position_section(self):
-        """Create position input components."""
+        # Position Input
         ctk.CTkLabel(
             self.sidebar_frame,
-            text="POSISI",
-            font=ctk.CTkFont(size=10, weight="bold")
-        ).grid(row=3, column=0)
+            text="Position",
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).grid(row=3, column=0, padx=20, pady=(10, 5), sticky="w")
 
         self.position_entry = self._create_numeric_entry()
-        self.position_entry.grid(row=4, column=0, pady=(0, 25))
+        self.position_entry.grid(row=4, column=0, padx=20, pady=(0, 10), sticky="ew")
+
+        # Set Reader Button
+        self.set_reader_button = ctk.CTkButton(
+            self.sidebar_frame,
+            text="CONFIGURE READER",
+            command=self._configure_reader,
+            state=self.set_state,
+            width=200
+        )
+        self.set_reader_button.grid(row=5, column=0, padx=20, pady=10)
 
     def _create_numeric_entry(self):
         """Create a numeric-only entry field."""
@@ -139,7 +147,8 @@ class RFIDReaderApp(ctk.CTk):
         entry = ctk.CTkEntry(
             self.sidebar_frame,
             validate="key",
-            validatecommand=(validate_cmd, "%P")
+            validatecommand=(validate_cmd, "%P"),
+            placeholder_text="Enter Position Number"
         )
         entry.bind("<KeyRelease>", self._on_position_change)
         return entry
@@ -154,77 +163,94 @@ class RFIDReaderApp(ctk.CTk):
         self.set_state = "active" if self.position_entry.get() else "disabled"
         self.set_reader_button.configure(state=self.set_state)
 
-    def _create_set_reader_button(self):
-        """Create the 'SET READER' button."""
-        self.set_reader_button = ctk.CTkButton(
-            self.sidebar_frame,
-            state=self.set_state,
-            text="SET READER",
-            width=100,
-            height=50,
-            font=ctk.CTkFont(weight="bold"),
-            command=self._configure_reader,
-            hover_color="blue"
-        )
-        self.set_reader_button.grid(row=5, column=0, padx=20, pady=10)
-
-    def _create_tab_view(self):
-        """Create a tab view for port and position display."""
-        self.tab_view = ctk.CTkTabview(self.sidebar_frame, width=120, height=80)
-        self.tab_view.grid(row=7, column=0)
-        self.tab_view.add("PORT")
-        self.tab_view.add("POS")
-
     def _create_main_content(self):
         """Create the main content area."""
-        self.uid_var = ctk.StringVar(value="0000000")
+        # UID Display Frame
+        uid_frame = ctk.CTkFrame(self, corner_radius=10)
+        uid_frame.grid(row=0, column=1, columnspan=2, padx=10, pady=10, sticky="nsew")
 
-        # UID Display Button
-        self.uid_display = ctk.CTkButton(
-            self, width=500, height=20,
-            state="disabled",
-            corner_radius=0,
-            text_color_disabled="#0dc900",
-            text=self.latest_uid,
-            font=ctk.CTkFont(weight="bold", size=36)
-        )
-        self.uid_display.grid(row=0, column=1, columnspan=2, pady=(5, 20), sticky="nsew")
-
-        # Latest UID Label
+        # UID Label
         ctk.CTkLabel(
-            self, text="USER ID DATA",
-            font=ctk.CTkFont(size=18, weight="bold")
-        ).grid(row=1, column=1, pady=(0, 10))
+            uid_frame,
+            text="Detected User ID",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(pady=(10, 5))
 
-        # Data Entry
-        self.data_entry = ctk.CTkEntry(
-            self,
-            state="disabled",
-            placeholder_text="Demo Data in here",
-            textvariable=self.uid_var,
-            font=ctk.CTkFont(family="Arial", size=30)
+        # UID Display
+        self.uid_display = ctk.CTkLabel(
+            uid_frame,
+            text=self.latest_uid,
+            font=ctk.CTkFont(weight="bold", size=36),
+            text_color="#0dc900"
         )
-        self.data_entry.grid(row=2, column=1, columnspan=2, padx=(20, 20), pady=(0, 10), sticky="nsew")
+        self.uid_display.pack(pady=10)
+
+        # Scan Control Frame
+        scan_frame = ctk.CTkFrame(self, corner_radius=10)
+        scan_frame.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
 
         # Scan Button
         self.scan_button = ctk.CTkButton(
-            self,
+            scan_frame,
+            text="START SCAN",
+            command=self._toggle_scan,
             state=self.scan_state,
-            text="SCAN DATA",
-            width=200, height=50,
-            font=ctk.CTkFont(weight="bold"),
-            hover_color="darkgreen",
-            command=self._toggle_scan
+            width=250,
+            height=50,
+            font=ctk.CTkFont(weight="bold", size=16)
         )
-        self.scan_button.grid(row=3, column=1, padx=20, pady=0)
+        self.scan_button.pack(padx=20, pady=20)
+
+    def _create_api_config_frame(self):
+        """Create API configuration frame."""
+        api_frame = ctk.CTkFrame(self, corner_radius=10)
+        api_frame.grid(row=1, column=2, padx=10, pady=10, sticky="nsew")
+
+        # API Enable Toggle
+        self.api_toggle = ctk.CTkSwitch(
+            api_frame,
+            text="Enable API Integration",
+            variable=self.api_enabled,
+            command=self._toggle_api
+        )
+        self.api_toggle.pack(padx=20, pady=(20, 10))
+
+        # API URL Entry
+        ctk.CTkLabel(
+            api_frame,
+            text="API Endpoint URL",
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).pack(padx=20, pady=(10, 5))
+
+        self.api_url_entry = ctk.CTkEntry(
+            api_frame,
+            textvariable=self.api_url,
+            width=300
+        )
+        self.api_url_entry.pack(padx=20, pady=(0, 10))
+
+        # Request Status Label
+        self.api_status_label = ctk.CTkLabel(
+            api_frame,
+            text="",
+            text_color="#0dc900"
+        )
+        self.api_status_label.pack(padx=20, pady=10)
+
+    def _toggle_api(self):
+        """Toggle API functionality."""
+        is_enabled = self.api_enabled.get()
+        self.api_url_entry.configure(state="normal" if is_enabled else "disabled")
+        if not is_enabled:
+            self.api_status_label.configure(text="API Disabled")
 
     def _refresh_available_ports(self):
         """Refresh and list available ports."""
         ports = [port.device for port in serial.tools.list_ports.comports() if "CH340" in port.description]
-        ports = ports if ports else ["Port Tidak Terdeteksi"]
+        ports = ports if ports else ["No Port Detected"]
 
         self.port_menu.configure(values=ports)
-        self.port_state = "active" if ports != ["Port Tidak Terdeteksi"] else "disabled"
+        self.port_state = "active" if ports != ["No Port Detected"] else "disabled"
         self.port_menu.configure(state=self.port_state)
 
     def _configure_reader(self):
@@ -237,25 +263,13 @@ class RFIDReaderApp(ctk.CTk):
             self.current_port = port
             self.current_position = position
 
-            # Update tab view with current port and position
-            ctk.CTkLabel(
-                self.tab_view.tab("PORT"),
-                text=port,
-                font=ctk.CTkFont(size=28, weight="bold")
-            ).grid(row=0, column=0, padx=20, pady=20)
-
-            ctk.CTkLabel(
-                self.tab_view.tab("POS"),
-                text=position,
-                font=ctk.CTkFont(size=28, weight="bold")
-            ).grid(row=0, column=0, padx=20, pady=20)
-
             self.scan_button.configure(state="active")
             self.scan_state = "active"
+            CTkMessagebox(title="Success", message=f"Connected to port {port}")
 
         except (serial.SerialException, TypeError) as e:
             CTkMessagebox(title="PORT ERROR", message=str(e))
-            self.port_menu.set("Port Tidak Terdeteksi")
+            self.port_menu.set("No Port Detected")
             self.position_entry.delete(0, tk.END)
             self.scan_button.configure(state="disabled")
             self.scan_state = "disabled"
@@ -273,16 +287,14 @@ class RFIDReaderApp(ctk.CTk):
     def _start_scanning(self):
         """Start the RFID scanning process."""
         self.set_reader_button.configure(state='disabled')
-        self.scan_button.configure(text="STOP SCAN")
-        self.uid_var.set("")
+        self.scan_button.configure(text="STOP SCAN", fg_color="red")
         self.is_scanning = True
         self._scan_loop()
 
     def _stop_scanning(self):
         """Stop the RFID scanning process."""
         self.set_reader_button.configure(state='normal')
-        self.scan_button.configure(text="START SCAN")
-        self.uid_var.set("")
+        self.scan_button.configure(text="START SCAN", fg_color=None)
         self.is_scanning = False
         if self.scan_thread:
             self.scan_thread.cancel()
@@ -325,7 +337,6 @@ class RFIDReaderApp(ctk.CTk):
         hex_space = ' '.join(hex_list)
 
         if "FB" in hex_space or "FE" in hex_space or not hex_space:
-            self.uid_var.set("Card Not Detected")
             return None
 
         return hex_space[-6:].replace(" ", "")
@@ -333,24 +344,31 @@ class RFIDReaderApp(ctk.CTk):
     def _handle_uid(self, uid):
         """Handle detected UID."""
         if uid == self.latest_uid:
-            self.uid_var.set("DUPLICATE DATA")
             return
 
         self.latest_uid = uid
         self.uid_display.configure(text=self.latest_uid)
-        self.uid_var.set(f"UID: {uid}")
 
-        try:
-            response = requests.get(self.api_url, params={'pos': self.current_position, 'kode': uid})
-            self.uid_var.set(f"UID: {uid}\nStatus: {response.status_code}")
-        except Exception as e:
-            self.uid_var.set(f"API Error: {e}")
+        # API Integration (Optional)
+        if self.api_enabled.get():
+            try:
+                response = requests.get(
+                    self.api_url.get(),
+                    params={'pos': self.current_position, 'kode': uid}
+                )
+                status = f"API Response: {response.status_code}"
+                status_color = "#0dc900" if response.status_code == 200 else "red"
+                self.api_status_label.configure(text=status, text_color=status_color)
+            except Exception as e:
+                self.api_status_label.configure(
+                    text=f"API Error: {e}",
+                    text_color="red"
+                )
 
     def _handle_no_response(self):
         """Handle scenarios with no serial response."""
         self.set_reader_button.configure(state='normal')
-        self.uid_var.set("NO PORT DETECTED")
-        self.scan_button.configure(text="START SCAN")
+        self.scan_button.configure(text="START SCAN", fg_color=None)
         self.is_scanning = False
 
 

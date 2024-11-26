@@ -4,7 +4,6 @@ import tkinter as tk
 import customtkinter as ctk
 import serial
 import serial.tools.list_ports
-import requests
 from typing import List, Optional
 from CTkMessagebox import CTkMessagebox
 
@@ -76,7 +75,6 @@ class RFIDReaderApp(ctk.CTk):
 
         self.rfid_config = RFIDReaderConfig()
         self.rfid_commands = RFIDCommands(RFIDReaderConfig.NO_READER)
-        self.api_url = 'https://registrasi.ptbi.co.id/web/rfid'
 
     def _setup_ui(self):
         """Set up the entire user interface."""
@@ -200,7 +198,7 @@ class RFIDReaderApp(ctk.CTk):
         self.data_entry = ctk.CTkEntry(
             self,
             state="disabled",
-            placeholder_text="Demo Data in here",
+            placeholder_text="Scan RFID Tag",
             textvariable=self.uid_var,
             font=ctk.CTkFont(family="Arial", size=30)
         )
@@ -339,12 +337,7 @@ class RFIDReaderApp(ctk.CTk):
         self.latest_uid = uid
         self.uid_display.configure(text=self.latest_uid)
         self.uid_var.set(f"UID: {uid}")
-
-        try:
-            response = requests.get(self.api_url, params={'pos': self.current_position, 'kode': uid})
-            self.uid_var.set(f"UID: {uid}\nStatus: {response.status_code}")
-        except Exception as e:
-            self.uid_var.set(f"API Error: {e}")
+        self.uid_var.set(f"UID: {uid}\nPosition: {self.current_position}")
 
     def _handle_no_response(self):
         """Handle scenarios with no serial response."""
