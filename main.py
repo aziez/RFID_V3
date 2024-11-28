@@ -58,7 +58,7 @@ class RFIDReaderApp(ctk.CTk):
         self.geometry("800x400")
         self.title("Power RFID V.3 By: Aziz")
         ctk.set_appearance_mode("Light")
-        ctk.set_default_color_theme("green")
+        ctk.set_default_color_theme("blue")
         self.grid_columnconfigure(1, weight=1)
 
     def _initialize_variables(self):
@@ -184,7 +184,7 @@ class RFIDReaderApp(ctk.CTk):
             self, width=500, height=20,
             state="disabled",
             corner_radius=0,
-            text_color_disabled="#0dc900",
+            text_color_disabled="#fff",
             text=self.latest_uid,
             font=ctk.CTkFont(weight="bold", size=36)
         )
